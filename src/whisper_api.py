@@ -4,10 +4,10 @@ import whisper
 import os
 import uuid
 import time
-#import numpy as np
-#from io import BytesIO
 import magic
 import base64
+#import numpy as np
+#from io import BytesIO
 
 app = FastAPI()
 
@@ -17,16 +17,18 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    allow_credentials=True,
 )
 
-# Carga el modelo Whisper ("tiny" 75MB, "base" 140MB, "small" 480MB, "medium" 1.5GB, "large" 3.1GB)
+# modelo Whisper ("tiny" 75MB, "base" 140MB, "small" 480MB, "medium" 1.5GB, "large" 3.1GB)
 model = whisper.load_model("base")
 print(f"Model device: {model.device}")
 
 def is_audio_file(file_bytes):
     """Verifica si los bytes corresponden a un archivo de audio válido"""
     mime = magic.from_buffer(file_bytes, mime=True)
-    return mime.startswith('audio/') or mime in ['application/octet-stream']
+    return mime.startswith('audio/') or mime.startswith('video/') or mime in ['application/octet-stream']
 
 def save_temp_file(file_bytes, extension=".wav"):
     """Guarda bytes en un archivo temporal"""
@@ -54,7 +56,7 @@ async def transcribe_audio(
 
         result = model.transcribe(
             temp_file,
-            language=language,
+            language=language if language else None,
             fp16=False,         # Para evitar warnings en CPU
             verbose=False       # Para menos output en consola
         )
@@ -64,7 +66,7 @@ async def transcribe_audio(
         os.remove(temp_file)
 
         return {
-            "processing_time": f"{processing_time:.2f} segundos",
+            "processing_time":  processing_time,
             "result": result
         }
 
@@ -91,7 +93,7 @@ async def transcribe_audio(
 
         result = model.transcribe(
             temp_file,
-            language=language,
+            language=language if language else None,
             fp16=False,         # Para evitar warnings en CPU
             verbose=False       # Para menos output en consola
         )
@@ -101,7 +103,7 @@ async def transcribe_audio(
         os.remove(temp_file)
 
         return {
-            "processing_time": f"{processing_time:.2f} segundos",
+            "processing_time": processing_time,
             "result": result
         }
 
