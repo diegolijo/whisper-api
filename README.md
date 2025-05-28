@@ -3,7 +3,7 @@
 ## Crear entorno virtual
 
 ```bash
-python3 -m venv venv
+python -m venv venv
 ```
 ### activar 
 
@@ -14,7 +14,7 @@ venv/scripts/activate
 ## 📦 Instalación de dependencias
 
 ```bash
-pip install fastapi uvicorn openai-whisper numpy python-multipart python-magic-bin
+pip install fastapi uvicorn openai-whisper numpy python-multipart python-magic-bin librosa soundfile
 ```
 
 ### Dependencias adicionales requeridas:
