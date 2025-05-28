@@ -1,11 +1,11 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body, Form
 from fastapi.middleware.cors import CORSMiddleware
 import whisper
 import os
 import uuid
 import time
-import numpy as np
-from io import BytesIO
+#import numpy as np
+#from io import BytesIO
 import magic
 import base64
 
@@ -35,39 +35,32 @@ def save_temp_file(file_bytes, extension=".wav"):
         f.write(file_bytes)
     return temp_file
 
-@app.post("/transcribe")
+@app.post("/transcribe_base64")
 async def transcribe_audio(
-    file: UploadFile = File(None),
-    base64_audio: str = None,
-    language: str = None 
+    base64_audio: str = Body(None),
+    language: str = Body(None),
 ):
     try:
-        # Manejo de ambos tipos de entrada (BLOB o Base64)
-        if file:
-            file_bytes = await file.read()
-        elif base64_audio:
+        if base64_audio:
             file_bytes = base64.b64decode(base64_audio.split(",")[-1])
         else:
             raise HTTPException(status_code=400, detail="Debe proporcionar un archivo de audio o datos base64")
-
-        # Validación del archivo de audio
+        
         if not is_audio_file(file_bytes):
             raise HTTPException(status_code=400, detail="El archivo proporcionado no es un audio válido")
 
-        # Guardado temporal y transcripción
         temp_file = save_temp_file(file_bytes)
         start_time = time.time()
 
         result = model.transcribe(
             temp_file,
-            language=language,  # <-- Usar el idioma proporcionado
+            language=language,
             fp16=False,         # Para evitar warnings en CPU
             verbose=False       # Para menos output en consola
         )
 
         processing_time = time.time() - start_time
 
-        # Limpieza
         os.remove(temp_file)
 
         return {
@@ -78,6 +71,43 @@ async def transcribe_audio(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/transcribe_file")
+async def transcribe_audio(
+    file: UploadFile = File(None),
+    language: str = Form(None)  
+):
+    try:
+        if file:
+            file_bytes = await file.read()
+        else:
+            raise HTTPException(status_code=400, detail="Debe proporcionar un archivo de audio o datos base64")
+
+        if not is_audio_file(file_bytes):
+            raise HTTPException(status_code=400, detail="El archivo proporcionado no es un audio válido")
+
+        temp_file = save_temp_file(file_bytes)
+        start_time = time.time()
+
+        result = model.transcribe(
+            temp_file,
+            language=language,
+            fp16=False,         # Para evitar warnings en CPU
+            verbose=False       # Para menos output en consola
+        )
+
+        processing_time = time.time() - start_time
+
+        os.remove(temp_file)
+
+        return {
+            "processing_time": f"{processing_time:.2f} segundos",
+            "result": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, access_log=False, log_level="error" )
